@@ -166,6 +166,7 @@
     gap: 0.5rem;
     align-items: start;
   }
+  .med-row > div { position: relative; }
   .med-row input { font-size: 0.8rem; }
   .btn-remove {
     width: 32px; height: 32px; margin-top: 0;
@@ -391,6 +392,42 @@
     font-size: 0.85rem;
     margin-top: 1rem;
   }
+
+  /* ── Autocomplete ── */
+  .ac-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0; right: 0;
+    background: white;
+    border: 1.5px solid var(--teal);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 200;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .ac-cat {
+    padding: 0.35rem 0.75rem 0.2rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--teal);
+    background: var(--teal-pale);
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+  }
+  .ac-item {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.ac-active { background: var(--teal-pale); color: var(--navy); }
+  .ac-item mark { background: none; color: var(--teal); font-weight: 700; }
 
   /* ── Disease Tags ── */
   .disease-tags {
@@ -683,7 +720,9 @@
         <div class="field-grid">
           <div>
             <label>Δραστική Ουσία</label>
-            <input type="text" id="drugName" placeholder="π.χ. Diazepam">
+            <div id="drugNameWrapper">
+              <input type="text" id="drugName" placeholder="π.χ. Diazepam">
+            </div>
           </div>
           <div>
             <label>Εμπορική Ονομασία</label>
@@ -761,6 +800,161 @@
 </div><!-- /app -->
 
 <script>
+// ── Drug database ──
+const DRUGS = [
+  // Καρδιαγγειακά — Αντιυπερτασικά
+  {n:'Αmlodipine',c:'Αντιυπερτασικά'},{n:'Lercanidipine',c:'Αντιυπερτασικά'},{n:'Nifedipine',c:'Αντιυπερτασικά'},{n:'Felodipine',c:'Αντιυπερτασικά'},
+  {n:'Ramipril',c:'Αντιυπερτασικά'},{n:'Enalapril',c:'Αντιυπερτασικά'},{n:'Lisinopril',c:'Αντιυπερτασικά'},{n:'Perindopril',c:'Αντιυπερτασικά'},{n:'Captopril',c:'Αντιυπερτασικά'},
+  {n:'Losartan',c:'Αντιυπερτασικά'},{n:'Valsartan',c:'Αντιυπερτασικά'},{n:'Telmisartan',c:'Αντιυπερτασικά'},{n:'Irbesartan',c:'Αντιυπερτασικά'},{n:'Olmesartan',c:'Αντιυπερτασικά'},
+  {n:'Bisoprolol',c:'Αντιυπερτασικά / β-αναστολείς'},{n:'Metoprolol',c:'Αντιυπερτασικά / β-αναστολείς'},{n:'Carvedilol',c:'Αντιυπερτασικά / β-αναστολείς'},{n:'Nebivolol',c:'Αντιυπερτασικά / β-αναστολείς'},{n:'Atenolol',c:'Αντιυπερτασικά / β-αναστολείς'},{n:'Propranolol',c:'Αντιυπερτασικά / β-αναστολείς'},
+  {n:'Hydrochlorothiazide',c:'Διουρητικά'},{n:'Indapamide',c:'Διουρητικά'},{n:'Furosemide',c:'Διουρητικά'},{n:'Torasemide',c:'Διουρητικά'},{n:'Spironolactone',c:'Διουρητικά'},{n:'Eplerenone',c:'Διουρητικά'},
+  {n:'Doxazosin',c:'Αντιυπερτασικά'},{n:'Methyldopa',c:'Αντιυπερτασικά'},{n:'Moxonidine',c:'Αντιυπερτασικά'},
+  // Καρδιαγγειακά — Καρδιακή ανεπάρκεια / αρρυθμίες
+  {n:'Digoxin',c:'Καρδιακή Ανεπάρκεια / Αρρυθμίες'},{n:'Amiodarone',c:'Καρδιακή Ανεπάρκεια / Αρρυθμίες'},{n:'Ivabradine',c:'Καρδιακή Ανεπάρκεια / Αρρυθμίες'},{n:'Sacubitril/Valsartan',c:'Καρδιακή Ανεπάρκεια / Αρρυθμίες'},
+  // Αντιπηκτικά / Αντιαιμοπεταλιακά
+  {n:'Warfarin',c:'Αντιπηκτικά'},{n:'Apixaban',c:'Αντιπηκτικά'},{n:'Rivaroxaban',c:'Αντιπηκτικά'},{n:'Dabigatran',c:'Αντιπηκτικά'},{n:'Edoxaban',c:'Αντιπηκτικά'},
+  {n:'Aspirin',c:'Αντιαιμοπεταλιακά'},{n:'Clopidogrel',c:'Αντιαιμοπεταλιακά'},{n:'Ticagrelor',c:'Αντιαιμοπεταλιακά'},{n:'Prasugrel',c:'Αντιαιμοπεταλιακά'},
+  // Νιτρώδη
+  {n:'Isosorbide mononitrate',c:'Νιτρώδη'},{n:'Isosorbide dinitrate',c:'Νιτρώδη'},{n:'Nitroglycerin',c:'Νιτρώδη'},
+  // Υπολιπιδαιμικά
+  {n:'Atorvastatin',c:'Υπολιπιδαιμικά'},{n:'Rosuvastatin',c:'Υπολιπιδαιμικά'},{n:'Simvastatin',c:'Υπολιπιδαιμικά'},{n:'Pravastatin',c:'Υπολιπιδαιμικά'},{n:'Fluvastatin',c:'Υπολιπιδαιμικά'},
+  {n:'Ezetimibe',c:'Υπολιπιδαιμικά'},{n:'Fenofibrate',c:'Υπολιπιδαιμικά'},{n:'Bezafibrate',c:'Υπολιπιδαιμικά'},
+  {n:'Evolocumab',c:'Υπολιπιδαιμικά (PCSK9)'},{n:'Alirocumab',c:'Υπολιπιδαιμικά (PCSK9)'},
+  // Αντιδιαβητικά
+  {n:'Metformin',c:'Αντιδιαβητικά'},{n:'Gliclazide',c:'Αντιδιαβητικά'},{n:'Glimepiride',c:'Αντιδιαβητικά'},{n:'Glibenclamide',c:'Αντιδιαβητικά'},{n:'Repaglinide',c:'Αντιδιαβητικά'},
+  {n:'Sitagliptin',c:'Αντιδιαβητικά (DPP-4)'},{n:'Vildagliptin',c:'Αντιδιαβητικά (DPP-4)'},{n:'Saxagliptin',c:'Αντιδιαβητικά (DPP-4)'},{n:'Alogliptin',c:'Αντιδιαβητικά (DPP-4)'},
+  {n:'Empagliflozin',c:'Αντιδιαβητικά (SGLT-2)'},{n:'Dapagliflozin',c:'Αντιδιαβητικά (SGLT-2)'},{n:'Canagliflozin',c:'Αντιδιαβητικά (SGLT-2)'},{n:'Ertugliflozin',c:'Αντιδιαβητικά (SGLT-2)'},
+  {n:'Liraglutide',c:'Αντιδιαβητικά (GLP-1)'},{n:'Semaglutide',c:'Αντιδιαβητικά (GLP-1)'},{n:'Dulaglutide',c:'Αντιδιαβητικά (GLP-1)'},{n:'Exenatide',c:'Αντιδιαβητικά (GLP-1)'},
+  {n:'Insulin glargine',c:'Ινσουλίνες'},{n:'Insulin detemir',c:'Ινσουλίνες'},{n:'Insulin degludec',c:'Ινσουλίνες'},{n:'Insulin aspart',c:'Ινσουλίνες'},{n:'Insulin lispro',c:'Ινσουλίνες'},{n:'Insulin NPH',c:'Ινσουλίνες'},{n:'Insulin (μείγμα)',c:'Ινσουλίνες'},
+  {n:'Pioglitazone',c:'Αντιδιαβητικά'},
+  // Αναπνευστικό
+  {n:'Salbutamol',c:'Αναπνευστικό'},{n:'Formoterol',c:'Αναπνευστικό'},{n:'Salmeterol',c:'Αναπνευστικό'},{n:'Indacaterol',c:'Αναπνευστικό'},{n:'Olodaterol',c:'Αναπνευστικό'},
+  {n:'Tiotropium',c:'Αναπνευστικό'},{n:'Ipratropium',c:'Αναπνευστικό'},{n:'Umeclidinium',c:'Αναπνευστικό'},{n:'Glycopyrronium',c:'Αναπνευστικό'},
+  {n:'Fluticasone',c:'Αναπνευστικό (ICS)'},{n:'Budesonide',c:'Αναπνευστικό (ICS)'},{n:'Beclometasone',c:'Αναπνευστικό (ICS)'},{n:'Ciclesonide',c:'Αναπνευστικό (ICS)'},
+  {n:'Montelukast',c:'Αναπνευστικό'},{n:'Theophylline',c:'Αναπνευστικό'},{n:'Roflumilast',c:'Αναπνευστικό'},
+  // Γαστρεντερολογικά
+  {n:'Omeprazole',c:'ΓΕΣ — PPIs'},{n:'Pantoprazole',c:'ΓΕΣ — PPIs'},{n:'Esomeprazole',c:'ΓΕΣ — PPIs'},{n:'Rabeprazole',c:'ΓΕΣ — PPIs'},{n:'Lansoprazole',c:'ΓΕΣ — PPIs'},
+  {n:'Ranitidine',c:'ΓΕΣ'},{n:'Famotidine',c:'ΓΕΣ'},{n:'Domperidone',c:'ΓΕΣ'},{n:'Metoclopramide',c:'ΓΕΣ'},{n:'Loperamide',c:'ΓΕΣ'},{n:'Macrogol',c:'ΓΕΣ'},{n:'Lactulose',c:'ΓΕΣ'},{n:'Bisacodyl',c:'ΓΕΣ'},
+  {n:'Mesalazine',c:'ΓΕΣ — ΦΝΕ'},{n:'Sulfasalazine',c:'ΓΕΣ — ΦΝΕ'},{n:'Budesonide (ΓΕΣ)',c:'ΓΕΣ — ΦΝΕ'},
+  // Θυρεοειδής
+  {n:'Levothyroxine',c:'Θυρεοειδής'},{n:'Methimazole',c:'Θυρεοειδής'},{n:'Propylthiouracil',c:'Θυρεοειδής'},
+  // ΚΝΣ — Αντικαταθλιπτικά
+  {n:'Sertraline',c:'Αντικαταθλιπτικά (SSRI)'},{n:'Escitalopram',c:'Αντικαταθλιπτικά (SSRI)'},{n:'Citalopram',c:'Αντικαταθλιπτικά (SSRI)'},{n:'Fluoxetine',c:'Αντικαταθλιπτικά (SSRI)'},{n:'Paroxetine',c:'Αντικαταθλιπτικά (SSRI)'},{n:'Fluvoxamine',c:'Αντικαταθλιπτικά (SSRI)'},
+  {n:'Venlafaxine',c:'Αντικαταθλιπτικά (SNRI)'},{n:'Duloxetine',c:'Αντικαταθλιπτικά (SNRI)'},{n:'Desvenlafaxine',c:'Αντικαταθλιπτικά (SNRI)'},
+  {n:'Mirtazapine',c:'Αντικαταθλιπτικά'},{n:'Trazodone',c:'Αντικαταθλιπτικά'},{n:'Bupropion',c:'Αντικαταθλιπτικά'},{n:'Vortioxetine',c:'Αντικαταθλιπτικά'},
+  {n:'Amitriptyline',c:'Τρικυκλικά'},{n:'Nortriptyline',c:'Τρικυκλικά'},{n:'Clomipramine',c:'Τρικυκλικά'},
+  // ΚΝΣ — Αντιψυχωσικά
+  {n:'Quetiapine',c:'Αντιψυχωσικά'},{n:'Olanzapine',c:'Αντιψυχωσικά'},{n:'Risperidone',c:'Αντιψυχωσικά'},{n:'Aripiprazole',c:'Αντιψυχωσικά'},{n:'Paliperidone',c:'Αντιψυχωσικά'},{n:'Haloperidol',c:'Αντιψυχωσικά'},{n:'Clozapine',c:'Αντιψυχωσικά'},{n:'Ziprasidone',c:'Αντιψυχωσικά'},
+  // ΚΝΣ — Αγχολυτικά / Υπνωτικά
+  {n:'Diazepam',c:'Βενζοδιαζεπίνες'},{n:'Lorazepam',c:'Βενζοδιαζεπίνες'},{n:'Alprazolam',c:'Βενζοδιαζεπίνες'},{n:'Clonazepam',c:'Βενζοδιαζεπίνες'},{n:'Oxazepam',c:'Βενζοδιαζεπίνες'},{n:'Bromazepam',c:'Βενζοδιαζεπίνες'},
+  {n:'Zolpidem',c:'Υπνωτικά (Z-drugs)'},{n:'Zopiclone',c:'Υπνωτικά (Z-drugs)'},{n:'Zaleplon',c:'Υπνωτικά (Z-drugs)'},
+  // ΚΝΣ — Αντιεπιληπτικά
+  {n:'Pregabalin',c:'Αντιεπιληπτικά / Νευροπάθεια'},{n:'Gabapentin',c:'Αντιεπιληπτικά / Νευροπάθεια'},{n:'Valproic acid',c:'Αντιεπιληπτικά'},{n:'Lamotrigine',c:'Αντιεπιληπτικά'},{n:'Levetiracetam',c:'Αντιεπιληπτικά'},{n:'Carbamazepine',c:'Αντιεπιληπτικά'},{n:'Oxcarbazepine',c:'Αντιεπιληπτικά'},{n:'Topiramate',c:'Αντιεπιληπτικά'},{n:'Phenytoin',c:'Αντιεπιληπτικά'},
+  // ΚΝΣ — Νόσος Parkinson
+  {n:'Levodopa/Carbidopa',c:'Νόσος Parkinson'},{n:'Pramipexole',c:'Νόσος Parkinson'},{n:'Ropinirole',c:'Νόσος Parkinson'},{n:'Rasagiline',c:'Νόσος Parkinson'},{n:'Selegiline',c:'Νόσος Parkinson'},{n:'Entacapone',c:'Νόσος Parkinson'},{n:'Amantadine',c:'Νόσος Parkinson'},
+  // ΚΝΣ — Άνοια
+  {n:'Donepezil',c:'Άνοια / Alzheimer'},{n:'Rivastigmine',c:'Άνοια / Alzheimer'},{n:'Galantamine',c:'Άνοια / Alzheimer'},{n:'Memantine',c:'Άνοια / Alzheimer'},
+  // Αναλγητικά / ΑΦΦ
+  {n:'Paracetamol',c:'Αναλγητικά'},{n:'Ibuprofen',c:'NSAIDs'},{n:'Naproxen',c:'NSAIDs'},{n:'Diclofenac',c:'NSAIDs'},{n:'Meloxicam',c:'NSAIDs'},{n:'Celecoxib',c:'NSAIDs'},{n:'Etoricoxib',c:'NSAIDs'},{n:'Indomethacin',c:'NSAIDs'},
+  {n:'Tramadol',c:'Οπιοειδή'},{n:'Codeine',c:'Οπιοειδή'},{n:'Morphine',c:'Οπιοειδή'},{n:'Oxycodone',c:'Οπιοειδή'},{n:'Hydromorphone',c:'Οπιοειδή'},{n:'Fentanyl',c:'Οπιοειδή'},{n:'Buprenorphine',c:'Οπιοειδή'},
+  // Ρευματολογικά / Ορθοπεδικά
+  {n:'Methotrexate',c:'DMARDS'},{n:'Hydroxychloroquine',c:'DMARDS'},{n:'Leflunomide',c:'DMARDS'},{n:'Sulfasalazine',c:'DMARDS'},
+  {n:'Prednisolone',c:'Κορτικοστεροειδή'},{n:'Methylprednisolone',c:'Κορτικοστεροειδή'},{n:'Dexamethasone',c:'Κορτικοστεροειδή'},{n:'Betamethasone',c:'Κορτικοστεροειδή'},
+  {n:'Colchicine',c:'Ουρική αρθρίτιδα'},{n:'Allopurinol',c:'Ουρική αρθρίτιδα'},{n:'Febuxostat',c:'Ουρική αρθρίτιδα'},
+  // Οστεοπόρωση
+  {n:'Alendronate',c:'Οστεοπόρωση'},{n:'Risedronate',c:'Οστεοπόρωση'},{n:'Zoledronic acid',c:'Οστεοπόρωση'},{n:'Denosumab',c:'Οστεοπόρωση'},{n:'Raloxifene',c:'Οστεοπόρωση'},{n:'Teriparatide',c:'Οστεοπόρωση'},{n:'Romosozumab',c:'Οστεοπόρωση'},
+  // Ουρολογικά
+  {n:'Tamsulosin',c:'Ουρολογικά'},{n:'Alfuzosin',c:'Ουρολογικά'},{n:'Doxazosin (ΒΕΥ)',c:'Ουρολογικά'},{n:'Dutasteride',c:'Ουρολογικά'},{n:'Finasteride',c:'Ουρολογικά'},
+  {n:'Solifenacin',c:'Ουρολογικά'},{n:'Tolterodine',c:'Ουρολογικά'},{n:'Oxybutynin',c:'Ουρολογικά'},{n:'Mirabegron',c:'Ουρολογικά'},
+  // Βιταμίνες / Συμπληρώματα
+  {n:'Βιταμίνη D3',c:'Συμπληρώματα'},{n:'Ασβέστιο',c:'Συμπληρώματα'},{n:'Μαγνήσιο',c:'Συμπληρώματα'},{n:'Ψευδάργυρος',c:'Συμπληρώματα'},{n:'Βιταμίνη Β12',c:'Συμπληρώματα'},{n:'Φυλλικό οξύ',c:'Συμπληρώματα'},{n:'Σίδηρος',c:'Συμπληρώματα'},{n:'Ωμέγα-3',c:'Συμπληρώματα'},
+  // Αντιβιοτικά (μακροχρόνια)
+  {n:'Azithromycin (μακροχρόνια)',c:'Αντιβιοτικά'},{n:'Nitrofurantoin (προφύλαξη)',c:'Αντιβιοτικά'},{n:'Trimethoprim (προφύλαξη)',c:'Αντιβιοτικά'},
+  // Αντιμυκητιασικά
+  {n:'Fluconazole',c:'Αντιμυκητιασικά'},{n:'Itraconazole',c:'Αντιμυκητιασικά'},
+  // Άλλα
+  {n:'Allopurinol',c:'Άλλα'},{n:'Hydroxyzine',c:'Αντιισταμινικά'},{n:'Cetirizine',c:'Αντιισταμινικά'},{n:'Loratadine',c:'Αντιισταμινικά'},{n:'Fexofenadine',c:'Αντιισταμινικά'},
+  {n:'Melatonin',c:'Υπνωτικά'},{n:'Baclofen',c:'Μυοχαλαρωτικά'},{n:'Tizanidine',c:'Μυοχαλαρωτικά'},{n:'Cyclobenzaprine',c:'Μυοχαλαρωτικά'},
+  {n:'Allopurinol',c:'Ουρική αρθρίτιδα'},{n:'Darbepoetin',c:'Αιματολογικά'},{n:'Erythropoietin',c:'Αιματολογικά'},
+];
+
+// ── Autocomplete ──
+let activeAC = null;
+
+function attachAutocomplete(input) {
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative;';
+  input.parentNode.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'ac-dropdown';
+  dropdown.style.display = 'none';
+  wrapper.appendChild(dropdown);
+
+  input.addEventListener('input', () => showAC(input, dropdown));
+  input.addEventListener('focus', () => { if (input.value.length >= 1) showAC(input, dropdown); });
+  input.addEventListener('keydown', (e) => handleACKey(e, input, dropdown));
+  document.addEventListener('click', (e) => {
+    if (!wrapper.contains(e.target)) dropdown.style.display = 'none';
+  });
+}
+
+function showAC(input, dropdown) {
+  const q = input.value.toLowerCase().trim();
+  if (q.length < 1) { dropdown.style.display = 'none'; return; }
+  const matches = DRUGS.filter(d => d.n.toLowerCase().includes(q)).slice(0, 30);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+
+  // Group by category
+  const groups = {};
+  matches.forEach(d => { (groups[d.c] = groups[d.c] || []).push(d.n); });
+
+  let html = '';
+  Object.entries(groups).forEach(([cat, names]) => {
+    html += `<div class="ac-cat">${cat}</div>`;
+    names.forEach(name => {
+      const hi = name.replace(new RegExp(`(${q})`, 'gi'), '<mark>$1</mark>');
+      html += `<div class="ac-item" data-val="${name}">${hi}</div>`;
+    });
+  });
+  dropdown.innerHTML = html;
+  dropdown.style.display = 'block';
+
+  dropdown.querySelectorAll('.ac-item').forEach(item => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      input.value = item.dataset.val;
+      dropdown.style.display = 'none';
+    });
+  });
+}
+
+function handleACKey(e, input, dropdown) {
+  const items = [...dropdown.querySelectorAll('.ac-item')];
+  const active = dropdown.querySelector('.ac-item.ac-active');
+  const idx = items.indexOf(active);
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (active) active.classList.remove('ac-active');
+    const next = items[idx + 1] || items[0];
+    next?.classList.add('ac-active');
+    next?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (active) active.classList.remove('ac-active');
+    const prev = items[idx - 1] || items[items.length - 1];
+    prev?.classList.add('ac-active');
+    prev?.scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter' && active) {
+    e.preventDefault();
+    input.value = active.dataset.val;
+    dropdown.style.display = 'none';
+  } else if (e.key === 'Escape') {
+    dropdown.style.display = 'none';
+  }
+}
+
 // ── Medication rows ──
 let medCount = 0;
 function addMed() {
@@ -769,19 +963,63 @@ function addMed() {
   const row = document.createElement('div');
   row.className = 'med-row';
   row.id = 'med-' + medCount;
-  row.innerHTML = `
-    <input type="text" placeholder="Φάρμακο / δραστική">
-    <input type="text" placeholder="π.χ. 10mg">
-    <input type="text" placeholder="π.χ. 1×/ημ.">
-    <input type="text" placeholder="π.χ. 2 χρόνια">
-    <button class="btn-remove" onclick="removeMed('med-${medCount}')" title="Αφαίρεση">×</button>
-  `;
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Δραστική / φάρμακο';
+
+  const doseInput = document.createElement('input');
+  doseInput.type = 'text';
+  doseInput.placeholder = 'π.χ. 10mg';
+
+  const freqInput = document.createElement('input');
+  freqInput.type = 'text';
+  freqInput.placeholder = 'π.χ. 1×/ημ.';
+
+  const durInput = document.createElement('input');
+  durInput.type = 'text';
+  durInput.placeholder = 'π.χ. 2 χρόνια';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn-remove';
+  removeBtn.title = 'Αφαίρεση';
+  removeBtn.textContent = '×';
+  removeBtn.onclick = () => row.remove();
+
+  row.appendChild(nameInput);
+  row.appendChild(doseInput);
+  row.appendChild(freqInput);
+  row.appendChild(durInput);
+  row.appendChild(removeBtn);
   list.appendChild(row);
+
+  attachAutocomplete(nameInput);
 }
 function removeMed(id) { document.getElementById(id)?.remove(); }
 
 // Initialize with 2 rows
 addMed(); addMed();
+
+// Attach autocomplete to drugName field
+document.addEventListener('DOMContentLoaded', () => {});
+(function initDrugNameAC() {
+  const wrapper = document.getElementById('drugNameWrapper');
+  const input = document.getElementById('drugName');
+  if (!wrapper || !input) return;
+  wrapper.style.position = 'relative';
+  const dropdown = document.createElement('div');
+  dropdown.className = 'ac-dropdown';
+  dropdown.style.display = 'none';
+  wrapper.appendChild(dropdown);
+  input.addEventListener('input', () => showAC(input, dropdown));
+  input.addEventListener('focus', () => { if (input.value.length >= 1) showAC(input, dropdown); });
+  input.addEventListener('keydown', (e) => handleACKey(e, input, dropdown));
+  document.addEventListener('click', (e) => { if (!wrapper.contains(e.target)) dropdown.style.display = 'none'; });
+})();
+
+// Fix med-row wrapper position for autocomplete
+const origMedRowStyle = `.med-row > div:first-child { position: relative; }`;
+
 
 // ── Collect form data ──
 function collectData() {
