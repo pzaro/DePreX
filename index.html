@@ -69,6 +69,41 @@
     padding-left: 1.25rem;
     margin-left: 0.25rem;
   }
+  .api-key-area {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .api-key-area label {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.6);
+    white-space: nowrap;
+    text-transform: none;
+    letter-spacing: 0;
+    margin: 0;
+  }
+  .api-key-area input {
+    width: 240px;
+    padding: 0.35rem 0.7rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    color: white;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    outline: none;
+  }
+  .api-key-area input::placeholder { color: rgba(255,255,255,0.35); }
+  .api-key-area input:focus { border-color: var(--teal-light); background: rgba(255,255,255,0.15); }
+  .api-key-status {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #6b7280;
+    flex-shrink: 0;
+  }
+  .api-key-status.ok { background: var(--green); }
+  .api-key-status.err { background: var(--red); }
 
   /* ── Layout ── */
   .app {
@@ -580,6 +615,11 @@
   </div>
   <h1>Αποσυνταγογράφηση Rx</h1>
   <span>Κλινική Αξιολόγηση Φαρμακευτικής Αγωγής</span>
+  <div class="api-key-area">
+    <label for="apiKeyInput">Anthropic API Key</label>
+    <div class="api-key-status" id="apiKeyStatus"></div>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" oninput="updateApiStatus()">
+  </div>
 </header>
 
 <div class="app">
@@ -1108,6 +1148,16 @@ function formatContent(text) {
     .replace(/<p><\/p>/g, '');
 }
 
+// ── API Key ──
+function getApiKey() {
+  return document.getElementById('apiKeyInput').value.trim();
+}
+function updateApiStatus() {
+  const key = getApiKey();
+  const dot = document.getElementById('apiKeyStatus');
+  dot.className = 'api-key-status ' + (key.startsWith('sk-ant-') ? 'ok' : key.length > 0 ? 'err' : '');
+}
+
 // ── Disease tag toggling ──
 const selectedDiseases = new Set();
 
@@ -1212,6 +1262,12 @@ async function runAnalysis() {
   const data = collectData();
   if (!data.drugName) { alert('Παρακαλώ εισάγετε τουλάχιστον το φάρμακο υπό αξιολόγηση.'); return; }
 
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    alert('Παρακαλώ εισάγετε το Anthropic API Key στο πεδίο επάνω δεξιά.');
+    return;
+  }
+
   const btn = document.getElementById('submitBtn');
   const panel = document.getElementById('resultPanel');
   btn.disabled = true;
@@ -1261,7 +1317,12 @@ async function runAnalysis() {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1800,
