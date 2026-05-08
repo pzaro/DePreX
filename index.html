@@ -392,6 +392,32 @@
     margin-top: 1rem;
   }
 
+  /* ── Disease Tags ── */
+  .disease-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .dtag {
+    padding: 0.28rem 0.65rem;
+    border: 1.5px solid var(--border);
+    border-radius: 100px;
+    background: white;
+    color: var(--slate);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+  .dtag:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-pale); }
+  .dtag.selected {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: white;
+  }
+
   /* ── Calc Toggle Button ── */
   .calc-toggle {
     display: inline-flex;
@@ -597,7 +623,33 @@
         </div>
         <div style="margin-top:0.9rem">
           <label>Ενεργά Νοσήματα</label>
-          <textarea id="conditions" placeholder="π.χ. ΣΔ τύπου 2, ΧΑΠ, ΣΝ, ΑΥ, κατάθλιψη..."></textarea>
+          <div class="disease-tags" id="diseaseTags">
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Αρτηριακή Υπέρταση (ΑΥ)')">ΑΥ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'ΣΔ τύπου 2')">ΣΔ2</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Δυσλιπιδαιμία')">Δυσλιπιδαιμία</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Στεφανιαία Νόσος (ΣΝ)')">ΣΝ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Καρδιακή Ανεπάρκεια (ΚΑ)')">ΚΑ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Κολπική Μαρμαρυγή (ΚΜ)')">ΚΜ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'ΑΕΕ / ΤΙΑ')">ΑΕΕ/ΤΙΑ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Χρόνια Αποφρακτική Πνευμονοπάθεια (ΧΑΠ)')">ΧΑΠ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Χρόνια Νεφρική Νόσος (ΧΝΝ)')">ΧΝΝ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Ηπατική Νόσος')">Ηπατική Νόσος</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Υποθυρεοειδισμός')">Υποθυρεοειδισμός</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Υπερθυρεοειδισμός')">Υπερθυρεοειδισμός</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Οστεοπόρωση')">Οστεοπόρωση</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Ρευματοειδής Αρθρίτιδα (ΡΑ)')">ΡΑ</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Γαστροοισοφαγική Παλινδρόμηση (GERD)')">GERD</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Έλκος Στομάχου / 12δακτύλου')">Έλκος</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Κατάθλιψη')">Κατάθλιψη</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Αγχώδης Διαταραχή')">Άγχος</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Άνοια / Alzheimer')">Άνοια</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Νόσος Parkinson')">Parkinson</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Επιληψία')">Επιληψία</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'ΣΔ τύπου 1')">ΣΔ1</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Ουρική Αρθρίτιδα')">Ουρική Αρθρίτιδα</button>
+            <button type="button" class="dtag" onclick="toggleDisease(this,'Καρκίνος (υπό παρακολούθηση/θεραπεία)')">Καρκίνος</button>
+          </div>
+          <textarea id="conditions" placeholder="Επιλέξτε από τις ετικέτες ή γράψτε επιπλέον νοσήματα..." style="margin-top:0.5rem"></textarea>
         </div>
       </div>
     </div>
@@ -857,6 +909,45 @@ function formatContent(text) {
     .replace(/\n/g, '<br>')
     .replace(/^/, '<p>').replace(/$/, '</p>')
     .replace(/<p><\/p>/g, '');
+}
+
+// ── Disease tag toggling ──
+const selectedDiseases = new Set();
+
+function toggleDisease(btn, disease) {
+  if (selectedDiseases.has(disease)) {
+    selectedDiseases.delete(disease);
+    btn.classList.remove('selected');
+  } else {
+    selectedDiseases.add(disease);
+    btn.classList.add('selected');
+  }
+  syncDiseaseField();
+}
+
+function syncDiseaseField() {
+  const textarea = document.getElementById('conditions');
+  // Preserve any manually typed text that isn't from tags
+  const tagText = [...selectedDiseases].join(', ');
+  // Find any free text (content that's not a tag value)
+  const currentLines = textarea.value.split(/,\s*/).map(s => s.trim()).filter(Boolean);
+  const freeText = currentLines.filter(line => ![...selectedDiseases].includes(line) && !isKnownTag(line));
+  const parts = [...selectedDiseases, ...freeText].filter(Boolean);
+  textarea.value = parts.join(', ');
+}
+
+function isKnownTag(str) {
+  const knownTags = [
+    'Αρτηριακή Υπέρταση (ΑΥ)','ΣΔ τύπου 2','Δυσλιπιδαιμία','Στεφανιαία Νόσος (ΣΝ)',
+    'Καρδιακή Ανεπάρκεια (ΚΑ)','Κολπική Μαρμαρυγή (ΚΜ)','ΑΕΕ / ΤΙΑ',
+    'Χρόνια Αποφρακτική Πνευμονοπάθεια (ΧΑΠ)','Χρόνια Νεφρική Νόσος (ΧΝΝ)',
+    'Ηπατική Νόσος','Υποθυρεοειδισμός','Υπερθυρεοειδισμός','Οστεοπόρωση',
+    'Ρευματοειδής Αρθρίτιδα (ΡΑ)','Γαστροοισοφαγική Παλινδρόμηση (GERD)',
+    'Έλκος Στομάχου / 12δακτύλου','Κατάθλιψη','Αγχώδης Διαταραχή',
+    'Άνοια / Alzheimer','Νόσος Parkinson','Επιληψία','ΣΔ τύπου 1',
+    'Ουρική Αρθρίτιδα','Καρκίνος (υπό παρακολούθηση/θεραπεία)'
+  ];
+  return knownTags.includes(str);
 }
 
 // ── GFR Calculator ──
